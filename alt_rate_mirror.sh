@@ -215,6 +215,61 @@ detect_system() {
     fi
 }
 
+# Возвращает ветку из рел-пути: "Sisyphus/x86_64" -> sisyphus, "p11/branch/x86_64" -> p11
+branch_from_relpath() {
+    case "$1" in
+        [Ss]isyphus*) echo "sisyphus";;
+        [pP][0-9]*) printf '%s\n' "$1" | sed -n 's/^\([pP][0-9][0-9]\).*/\1/p' | tr 'A-Z' 'a-z';;
+        *) echo "";;
+    esac
+}
+
+# Совпадает ли токен архитектуры из пути с архитектурой системы
+arch_matches() {
+    [ "$1" = "noarch" ] && return 1
+    [ "$1" = "$ARCH" ] && return 0
+    case "$ARCH:$1" in
+        x86_64:x86_64-i586|x86_64:i586) return 0;;
+    esac
+    return 1
+}
+
+# Контроль «чужой версии»: ветка и архитектура в путях конфига
+# должны соответствовать реальной системе. Иначе зеркало другой ветки
+# (например, Sisyphus на p11) можно было бы применить и поломать обновления.
+verify_branch_and_arch() {
+    local b seen_branch="" seen_arch=0 ci
+    for ((ci=0; ci<CFG_LINES; ci++)); do
+        local rp="${CFG_RELPATH[$ci]}"
+        b=$(branch_from_relpath "$rp")
+        if [ -n "$b" ]; then
+            case " $seen_branch " in
+                *" $b "*) ;;
+                *) seen_branch="$seen_branch $b";;
+            esac
+        fi
+        local tok
+        tok=$(printf '%s\n' "$rp" | awk -F/ '{print $NF}')
+        if [ "$tok" != "noarch" ] && arch_matches "$tok"; then
+            seen_arch=1
+        fi
+    done
+    local count=0
+    for b in $seen_branch; do count=$((count+1)); done
+    if [ "$count" -ge 1 ] && [ "$FORCE" != "1" ]; then
+        for b in $seen_branch; do
+            if [ "$b" != "$BRANCH" ]; then
+                die "ВНИМАНИЕ: пути в конфигурации ($SOURCES_LIST_DIR) относятся к ветке «$seen_branch», а система — «$BRANCH» ($ALT_NAME). Зеркала другой ветки применять нельзя — будут поломаны обновления. Проверьте /etc/altrelease и файлы *.list. Если уверены — запустите с --force."
+            fi
+        done
+    elif [ "$count" -gt 1 ]; then
+        warn "В конфигурации смешано несколько веток: $seen_branch — проверяем все пути как есть."
+    fi
+    if [ "$seen_arch" != "1" ] && [ "$FORCE" != "1" ]; then
+        die "Ни одна секция в конфигурации не соответствует архитектуре системы ($ARCH). Проверьте файлы *.list. Если уверены — запустите с --force."
+    fi
+}
+
 # ----------------------------- работа с конфигом ----------------------------
 # Формат строки ALT:  rpm [label] <url> <relpath> <компоненты...>
 # Например: rpm [alt] http://mirror.yandex.ru/altlinux p11/branch/x86_64 classic
@@ -586,6 +641,8 @@ if [ "$CFG_LINES" -eq 0 ]; then
     done
 else
     FIRST_RELPATH="${CFG_RELPATH[0]}"
+    # контроль соответствия ветки/архитектуры системы и конфига
+    verify_branch_and_arch
     # уникальные рел-пути для проверки полноты
     TEST_RELPATHS=()
     for ((ci=0; ci<CFG_LINES; ci++)); do
