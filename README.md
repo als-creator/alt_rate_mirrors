@@ -76,7 +76,9 @@ curl -fsSL https://raw.githubusercontent.com/als-creator/alt_rate_mirror/main/al
 
 3. **Тестирование зеркал.** Список зеркал собран из
    [вики ALT Linux](https://www.altlinux.org/Зеркала), из списка зеркал
-   `apt-check` (apt-check-qt) и `alt-mirror-switcher`. Для каждого зеркала:
+   `apt-check` (apt-check-qt) и `alt-mirror-switcher`, и проверен на
+   активность (2026-09-19, см. `check_mirrors.sh` — мёртвые зеркала
+   в список не включены). Для каждого зеркала:
 
    - проверяется доступность **всех** секций конфига (архитектура, multilib,
      noarch) по файлу `base/pkglist.classic.xz` — если какой-то секции нет,
@@ -168,6 +170,26 @@ bash alt_rate_mirror.sh --mirrors-file mirrors.txt
 Официальный список зеркал в закомментированном виде лежит в самом скрипте
 и в файле `mirrors.txt`. Дополнить можно строкой в формате
 `хост|директория дистрибутива|комментарий`.
+
+### Проверка активности
+
+Перед включением в список каждое зеркало проверяется скриптом
+`check_mirrors.sh`: он читает `mirrors.txt`, для каждого хоста пробует
+http и https и ищет живые разделы репозитория (Sisyphus, p10/p11/p12) по
+файлу `base/pkglist.classic.xz`. Зеркало считается живым, если отвечает
+хотя бы по одному протоколу, а его индексы не старше порога
+(`--max-days`, по умолчанию 7):
+
+```bash
+bash check_mirrors.sh                 # проверить весь mirrors.txt
+bash check_mirrors.sh --max-days 14   # другой порог свежести
+```
+
+Последняя проверка — **2026-09-19**: в списке 10 живых зеркал,
+`mirror.mephi.ru` работает только по http. Отвергнуты как нерабочие:
+`mirror.eterfund.org`, `ftpmirror2.infania.net`, `mirror.hoster.kz`
+(осталась лишь старая p8-раскладка), `altlinux.tomsk.ru`, `ftp.heanet.ie`,
+`mirror.corbina.ru`, `mirror.timeweb.ru`.
 
 ---
 

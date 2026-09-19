@@ -4,12 +4,27 @@
 # Каждый хост проверяется и по http, и по https (--protocol auto).
 #
 # Источники списка:
-#   * https://www.altlinux.org/Зеркала
+#   * https://www.altlinux.org/Зеркала, https://www.altlinux.org/Releases/Download
 #   * apt-check (apt-check-qt, автор Petr-akhlamov)
 #   * alt-mirror-switcher (shad)
 #
+# Проверка активности: bash check_mirrors.sh
+# Дата проверки: 2026-09-19. Все хосты ниже отвечают на pkglist
+# (Sisyphus и/или p11) по http и https, кроме mirror.mephi.ru —
+# у него работает только http (https не отдаёт репозиторий).
+#
+# Отвергнуто при проверке 2026-09-19 (не отвечают по http/https
+# либо не содержат актуальных веток — не включать):
+#   mirror.eterfund.org       — мёртв (живой аналог: mirror.eterfund.ru)
+#   ftpmirror2.infania.net    — мёртв
+#   mirror.hoster.kz          — жива только старая раскладка p8 (x86_64/base)
+#   altlinux.tomsk.ru         — теперь городской портал Томска, не зеркало
+#   ftp.heanet.ie             — мёртв
+#   mirror.corbina.ru         — мёртв
+#   mirror.timeweb.ru         — мёртв
+#
 # Чтобы добавить своё зеркало — допишите строку в конец и
-# запустите: bash alt_rate_mirror.sh --mirrors-file mirrors.txt
+# запустите: bash check_mirrors.sh && bash alt_rate_mirror.sh --mirrors-file mirrors.txt
 
 ftp.altlinux.org|/pub/distributions/ALTLinux|Официальное зеркало ALT Linux Team (Москва)
 mirror.yandex.ru|/altlinux|Яндекс
@@ -17,8 +32,7 @@ mirror.datacenter.by|/pub/ALTLinux|Белтелеком (Минск, Белар�
 distrib-coffee.ipsl.jussieu.fr|/pub/linux/altlinux|IPSL (Париж, Франция)
 mirror.truenetwork.ru|/altlinux|TrueNetwork
 mirror.cs.msu.ru|/alt|МГУ им. Ломоносова
-mirror.eterfund.org|/mirror.yandex.ru/altlinux|EterFund (зеркало Яндекса)
 mirror.eterfund.ru|/mirror.yandex.ru/altlinux|EterFund (зеркало Яндекса)
-mirror.mephi.ru|/ALTLinux|НИЯУ МИФИ
+mirror.mephi.ru|/ALTLinux|НИЯУ МИФИ (только http)
 download.basealt.ru|/pub/distributions/ALTLinux|Базальт СПО
 download.etersoft.ru|/pub/ALTLinux|Etersoft

@@ -119,6 +119,8 @@ done
 # Список собран из вики https://www.altlinux.org/Зеркала, из списка зеркал
 # apt-check (петр-ахламов/apt-check-qt) и из alt-mirror-switcher (shad).
 # Каждый хост проверяется и по http, и по https (см. --protocol).
+# Актуальность списка проверена 2026-09-19 (bash check_mirrors.sh):
+# все хосты отвечают и свежи; mirror.mephi.ru работает только по http.
 DEFAULT_MIRRORS=(
     "ftp.altlinux.org|/pub/distributions/ALTLinux|Официальное зеркало ALT Linux Team (Москва)"
     "mirror.yandex.ru|/altlinux|Яндекс"
@@ -126,9 +128,8 @@ DEFAULT_MIRRORS=(
     "distrib-coffee.ipsl.jussieu.fr|/pub/linux/altlinux|IPSL (Париж, Франция)"
     "mirror.truenetwork.ru|/altlinux|TrueNetwork"
     "mirror.cs.msu.ru|/alt|МГУ им. Ломоносова"
-    "mirror.eterfund.org|/mirror.yandex.ru/altlinux|EterFund (зеркало Яндекс)"
     "mirror.eterfund.ru|/mirror.yandex.ru/altlinux|EterFund (зеркало Яндекс)"
-    "mirror.mephi.ru|/ALTLinux|НИЯУ МИФИ"
+    "mirror.mephi.ru|/ALTLinux|НИЯУ МИФИ (только http)"
     "download.basealt.ru|/pub/distributions/ALTLinux|Базальт СПО"
     "download.etersoft.ru|/pub/ALTLinux|Etersoft"
 )
