@@ -1,4 +1,4 @@
-# alt_rate_mirror
+# alt_rate_mirrors
 
 Аналог **rate-mirrors** (для Arch) для **ALT Linux**: автоматически определяет
 ветку дистрибутива, тестирует зеркала репозиториев на скорость и свежесть и
@@ -12,8 +12,8 @@
 ## Быстрый старт (запуск из интернета)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/als-creator/alt_rate_mirror/main/alt_rate_mirror.sh \
-  -o /tmp/alt_rate_mirror.sh && bash /tmp/alt_rate_mirror.sh
+curl -fsSL https://raw.githubusercontent.com/als-creator/alt_rate_mirrors/main/alt_rate_mirrors.sh \
+  -o /tmp/alt_rate_mirrors.sh && bash /tmp/alt_rate_mirrors.sh
 ```
 
 Перед записью конфигурации будет запрошен пароль root (через `su`, а если
@@ -23,8 +23,8 @@ curl -fsSL https://raw.githubusercontent.com/als-creator/alt_rate_mirror/main/al
 Хотите только посмотреть, что получится, ничего не меняя:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/als-creator/alt_rate_mirror/main/alt_rate_mirror.sh \
-  -o /tmp/alt_rate_mirror.sh && bash /tmp/alt_rate_mirror.sh --dry-run
+curl -fsSL https://raw.githubusercontent.com/als-creator/alt_rate_mirrors/main/alt_rate_mirrors.sh \
+  -o /tmp/alt_rate_mirrors.sh && bash /tmp/alt_rate_mirrors.sh --dry-run
 ```
 
 ---
@@ -118,16 +118,16 @@ curl -fsSL https://raw.githubusercontent.com/als-creator/alt_rate_mirror/main/al
 
 ```bash
 # сухой прогон: протестировать и показать новый конфиг
-bash alt_rate_mirror.sh --dry-run
+bash alt_rate_mirrors.sh --dry-run
 
 # применить два лучших зеркала
-bash alt_rate_mirror.sh --top 2
+bash alt_rate_mirrors.sh --top 2
 
 # только HTTPS-зеркала
-bash alt_rate_mirror.sh --protocol https
+bash alt_rate_mirrors.sh --protocol https
 
 # свой список зеркал
-bash alt_rate_mirror.sh --mirrors-file mirrors.txt
+bash alt_rate_mirrors.sh --mirrors-file mirrors.txt
 ```
 
 ---

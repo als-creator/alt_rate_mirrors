@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# alt_rate_mirror.sh — аналог rate-mirrors для ALT Linux
+# alt_rate_mirrors.sh — аналог rate-mirrors для ALT Linux
 #
 # Тестирует зеркала репозиториев ALT Linux на скорость и свежесть,
 # определяет ветку дистрибутива (Sisyphus / p10 / p11 / p12 ...) и заменяет
@@ -8,11 +8,11 @@
 #
 # Автор: als-creator
 # Лицензия: GPL-3.0-or-later (см. LICENSE)
-# Домашняя страница: https://github.com/als-creator/alt_rate_mirror
+# Домашняя страница: https://github.com/als-creator/alt_rate_mirrors
 #
 # Запуск без установки (из интернета):
-#   curl -fsSL https://raw.githubusercontent.com/als-creator/alt_rate_mirror/main/alt_rate_mirror.sh \
-#     -o /tmp/alt_rate_mirror.sh && bash /tmp/alt_rate_mirror.sh
+#   curl -fsSL https://raw.githubusercontent.com/als-creator/alt_rate_mirrors/main/alt_rate_mirrors.sh \
+#     -o /tmp/alt_rate_mirrors.sh && bash /tmp/alt_rate_mirrors.sh
 #
 # На ALT Linux обычно нет sudo — скрипт сам повышает права через su,
 # либо использует sudo, если он установлен.
@@ -25,7 +25,7 @@ set -uo pipefail
 export LC_ALL=C
 
 VERSION="1.0.0"
-SCRIPT_NAME="alt_rate_mirror.sh"
+SCRIPT_NAME="alt_rate_mirrors.sh"
 
 # ----------------------------- значения по умолчанию ------------------------
 TOP_MIRRORS="${TOP_MIRRORS:-3}"           # сколько лучших зеркал писать в конфиг
@@ -673,10 +673,10 @@ for ((hi=0; hi<MIRROR_COUNT; hi++)); do
 done
 info "Кандидатов: $CAND_COUNT (тестируем со скоростью до $MAX_TIME с каждым, парал. $PARALLEL)"
 
-RESULT_DIR="$(mktemp -d /tmp/alt_rate_mirror.XXXXXX)"
+RESULT_DIR="$(mktemp -d /tmp/alt_rate_mirrors.XXXXXX)"
 trap 'rm -rf "$RESULT_DIR" "$OUT_DIR"' EXIT
 # OUT_DIR создаётся отдельно — в нём лежат новые файлы конфигурации (для dry-run показать / применить)
-OUT_DIR="$(mktemp -d /tmp/alt_rate_mirror_out.XXXXXX)"
+OUT_DIR="$(mktemp -d /tmp/alt_rate_mirrors_out.XXXXXX)"
 
 for ((cid=0; cid<CAND_COUNT; cid++)); do
     test_one_candidate "$cid" &

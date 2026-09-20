@@ -1,6 +1,6 @@
 # Список зеркал репозиториев ALT Linux
 # Формат: хост|директория дистрибутива|комментарий
-# Используется скриптом alt_rate_mirror.sh (опция --mirrors-file).
+# Используется скриптом alt_rate_mirrors.sh (опция --mirrors-file).
 # Каждый хост проверяется и по http, и по https (--protocol auto).
 #
 # Источники списка:
@@ -24,7 +24,7 @@
 #   mirror.timeweb.ru         — мёртв
 #
 # Чтобы добавить своё зеркало — допишите строку в конец и
-# запустите: bash check_mirrors.sh && bash alt_rate_mirror.sh --mirrors-file mirrors.txt
+# запустите: bash check_mirrors.sh && bash alt_rate_mirrors.sh --mirrors-file mirrors.txt
 
 ftp.altlinux.org|/pub/distributions/ALTLinux|Официальное зеркало ALT Linux Team (Москва)
 mirror.yandex.ru|/altlinux|Яндекс
