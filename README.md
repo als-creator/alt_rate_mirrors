@@ -166,6 +166,9 @@ bash alt_rate_mirrors.sh --mirrors-file mirrors.txt
 - [https://www.altlinux.org/Зеркала](https://www.altlinux.org/Зеркала)
 - [https://www.altlinux.org/Apt_checker](https://www.altlinux.org/Apt_checker)
 - [https://altlinux.space/shad/alt-mirror-switcher](https://altlinux.space/shad/alt-mirror-switcher)
+- [update_sisyphus_mirrors.sh](https://github.com/als-creator/altlinux_scripts/blob/main/update_sisyphus_mirrors.sh) — скрипт
+  переключения зеркал из репо [als-creator/altlinux_scripts](https://github.com/als-creator/altlinux_scripts): адреса
+  и формат строк `rpm` для Sisyphus.
 
 Официальный список зеркал в закомментированном виде лежит в самом скрипте
 и в файле `mirrors.txt`. Дополнить можно строкой в формате
