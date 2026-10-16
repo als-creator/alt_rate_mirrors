@@ -101,13 +101,15 @@ curl -fsSL https://raw.githubusercontent.com/als-creator/alt_rate_mirrors/main/a
 
 | Опция | Описание | По умолчанию |
 |---|---|---|
-| `-n, --dry-run` | только тест и показ результата, ничего не писать | выкл. |
+| `-n, --dry-run` | только тест и показ результата, ничего не писать; **работает на любом дистрибутиве** | выкл. |
 | `-t, --top N` | сколько лучших зеркал записать | `3` |
 | `--max-time N` | лимит замера скорости одного зеркала, сек | `15` |
 | `--max-age-hours N` | зеркала с индексом старше N часов отбрасываются | `72` |
 | `--allow-stale` | не отбрасывать старые зеркала (в конце списка) | выкл. |
 | `--protocol P` | `auto` (https, если работает), `http`, `https` | `auto` |
 | `--parallel N` | параллельных замеров скорости | `6` |
+| `--branch B` | ветка для теста: `sisyphus`, `p10`, `p11`, ... — для не-ALT систем | автоопределение |
+| `--arch A` | архитектура: `x86_64`, `aarch64`, ... | автоопределение |
 | `--mirrors-file F` | свой список зеркал `хост|директория|комментарий` | встроенный |
 | `-f, --force` | не проверять, что система — ALT Linux | выкл. |
 | `--no-update` | не запускать `apt-get update` после применения | выкл. |
@@ -123,12 +125,35 @@ bash alt_rate_mirrors.sh --dry-run
 # применить два лучших зеркала
 bash alt_rate_mirrors.sh --top 2
 
+# проверить зеркала p11 (на не-ALT дистрибутивах ветка задаётся явно)
+bash alt_rate_mirrors.sh --dry-run --branch p11
+
 # только HTTPS-зеркала
 bash alt_rate_mirrors.sh --protocol https
 
 # свой список зеркал
 bash alt_rate_mirrors.sh --mirrors-file mirrors.txt
 ```
+
+---
+
+## Проверка зеркал с любого дистрибутива
+
+Режим `--dry-run` не пишет ничего в систему и не требует root, поэтому
+запускается на любом дистрибутиве — Arch, Debian, Ubuntu, Fedora и т.д.
+Архитектура определяется автоматически, ветка — по умолчанию sisyphus
+или из `--branch`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/als-creator/alt_rate_mirrors/main/alt_rate_mirrors.sh \
+  -o /tmp/alt_rate_mirrors.sh && bash /tmp/alt_rate_mirrors.sh --dry-run
+
+# та же проверка для ветки p11
+bash /tmp/alt_rate_mirrors.sh --dry-run --branch p11
+```
+
+Вывод — рейтинг доступных зеркал со скоростью и свежестью индексов;
+временные файлы скрипт удаляет сам, системные каталоги не трогаются.
 
 ---
 

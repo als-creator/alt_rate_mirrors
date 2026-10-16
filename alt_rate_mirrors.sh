@@ -65,8 +65,10 @@ VERBOSE=0
 NO_UPDATE=0
 MIRRORS_FILE=""
 SOURCES_LIST_DIR="${SOURCES_LIST_DIR:-/etc/apt/sources.list.d}"
-# Переменные для тестирования / форсирования определения:
-# ALT_BRANCH (sisyphus|p10|p11|...), ALT_ARCH (x86_64|aarch64|...)
+# Ветка и архитектура задаются переменными ALT_BRANCH (sisyphus|p10|p11|...)
+# или опциями --branch/--arch (CLI перекрывает env); аналогично ALT_ARCH/--arch.
+# На ALT без определений берутся из системы; на других дистрибутивах
+# (режим --dry-run) ветка по умолчанию — sisyphus.
 
 # ----------------------------- вывод ---------------------------------------
 msg()  { printf '%s\n' "$*"; }
@@ -85,12 +87,15 @@ $SCRIPT_NAME v$VERSION — выбор самых быстрых и свежих 
 
 Опции:
   -n, --dry-run          только протестировать и показать результат, ничего не писать
+                         (работает на любом дистрибутиве — без root и без --force)
   -t, --top N            сколько лучших зеркал записать (по умолчанию $TOP_MIRRORS)
       --max-time N       лимит теста скорости одного зеркала, секунд (по умолчанию $MAX_TIME)
       --max-age-hours N  отбрасывать зеркала, у которых индекс старше N часов (по умолчанию $MAX_AGE_HOURS)
       --allow-stale      не отбрасывать старые зеркала (они попадут в конец списка)
       --protocol P       auto | http | https (по умолчанию auto: https, если поддерживается)
       --parallel N       сколько тестов запускать параллельно (по умолчанию $PARALLEL)
+      --branch B         ветка для теста: sisyphus, p10, p11, ... (иначе определяется автоматически)
+      --arch A           архитектура: x86_64, aarch64, ... (иначе определяется автоматически)
   -f, --force            не проверять, что система действительно ALT Linux
       --no-update        не запускать apt-get update после применения зеркал
   -v, --verbose          подробный вывод
@@ -98,11 +103,15 @@ $SCRIPT_NAME v$VERSION — выбор самых быстрых и свежих 
 
 Примеры:
   $SCRIPT_NAME --dry-run                    # протестировать и показать список
+  $SCRIPT_NAME --dry-run --branch p11       # проверить зеркала p11 с любого дистра
   $SCRIPT_NAME --top 2                      # применить два лучших зеркала
   $SCRIPT_NAME --protocol https             # тестировать только HTTPS
 
-Требуется root для записи конфигурации. Если вы не root — скрипт сам
-повысит права через su (по умолчанию в ALT нет sudo) или через sudo.
+Режим --dry-run ничего не пишет в систему, поэтому работает на любом
+дистрибутиве (Arch, Debian, Ubuntu, Fedora, ...) — это просто проверка
+скорости и доступности зеркал ALT. Для ЗАПИСИ конфигурации нужен ALT Linux:
+если вы не root — скрипт сам повысит права через su (по умолчанию
+в ALT нет sudo) или через sudo.
 EOF
 }
 
@@ -123,6 +132,10 @@ while [ $# -gt 0 ]; do
         --parallel=*)          PARALLEL="${1#*=}";;
         --mirrors-file)        shift; MIRRORS_FILE="$1";;
         --mirrors-file=*)      MIRRORS_FILE="${1#*=}";;
+        --branch)              shift; ALT_BRANCH="$1";;
+        --branch=*)            ALT_BRANCH="${1#*=}";;
+        --arch)                shift; ALT_ARCH="$1";;
+        --arch=*)              ALT_ARCH="${1#*=}";;
         -f|--force)            FORCE=1;;
         --no-update)           NO_UPDATE=1;;
         -v|--verbose)          VERBOSE=1;;
@@ -245,8 +258,11 @@ detect_system() {
     fi
     [ -z "$ARCH" ] && ARCH=$(uname -m 2>/dev/null || echo x86_64)
 
-    if [ "$ALT_OK" != "1" ] && [ "$FORCE" != "1" ]; then
-        die "Похоже, это не ALT Linux (не найден /etc/altrelease и ID=altlinux в /etc/os-release). Если вы уверены — запустите с --force."
+    # Проверка «это ALT» нужна только при ЗАПИСИ конфигурации: в режиме
+    # --dry-run ничего не пишется, поэтому тест зеркал разрешён с любого
+    # дистрибутива (ветка/архитектура берутся из определения или --branch/--arch).
+    if [ "$ALT_OK" != "1" ] && [ "$FORCE" != "1" ] && [ "$DRY_RUN" != "1" ]; then
+        die "Похоже, это не ALT Linux (не найден /etc/altrelease и ID=altlinux в /etc/os-release). Для проверки зеркал без записи запустите с --dry-run; для принудительного применения — с --force."
     fi
 }
 
@@ -702,6 +718,11 @@ apply_config() {
 
 # ----------------------------- main -----------------------------------------
 detect_system
+# На не-ALT системе в режиме теста предупреждаем: ветка по умолчанию
+# sisyphus, для другой — укажите --branch.
+if [ "$ALT_OK" != "1" ] && [ "$DRY_RUN" = "1" ]; then
+    warn "Система не определена как ALT Linux — режим проверки (--dry-run), конфигурация не изменится. Тестируемая ветка: $BRANCH (--branch задаёт другую)."
+fi
 [ "$VERBOSE" = "1" ] && info "ALT: $ALT_NAME | ветка: $BRANCH | arch: $ARCH"
 
 load_mirrors
