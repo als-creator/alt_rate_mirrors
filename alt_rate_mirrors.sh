@@ -53,13 +53,24 @@ SCRIPT_NAME="alt_rate_mirrors.sh"
 # MAX_TIME=10 ...), что удобно для автоматизации и тестов. CLI-опции,
 # разобранные ниже, перекрывают окружение. Приоритет:
 #   значение по умолчанию < переменная окружения < опция командной строки.
-TOP_MIRRORS="${TOP_MIRRORS:-3}"           # сколько лучших зеркал писать в конфиг
-MAX_TIME="${MAX_TIME:-15}"                # сек, лимит на тест скорости одного зеркала
-MAX_AGE_HOURS="${MAX_AGE_HOURS:-72}"      # свежесть зеркала (часы), старше — мимо
-PARALLEL="${PARALLEL:-6}"                 # параллельных скоростных тестов
+# --- ЧИСЛОВЫЕ НАСТРОЙКИ (меняются через env или опции CLI) ---
+# TOP_MIRRORS   1     сколько зеркал писать в конфиг. 1 = только самое быстрое
+#                     (рекомендуется: меньше шансов попасть на отвалившееся;
+#                     больше 1 — резерв, но apt будет ходить и к медленным).
+# MAX_TIME      15    сек, максимум на замер одного зеркала. 5 — быстрый обзор,
+#                     30-60 — точный замер медленных каналов; больше 120 не надо.
+# MAX_AGE_HOURS 72    макс. возраст индекса (Last-Modified), часы. 24 — строго,
+#                     168 (неделя) — терпимо к задержкам синхронизации.
+# PARALLEL      6     сколько зеркал тестировать одновременно. 2-4 — щадящий
+#                     режим, 8-10 — быстрее, но выше риск rate-limit у зеркал.
+TOP_MIRRORS="${TOP_MIRRORS:-1}"
+MAX_TIME="${MAX_TIME:-15}"
+MAX_AGE_HOURS="${MAX_AGE_HOURS:-72}"
+PARALLEL="${PARALLEL:-6}"
 PROTOCOL="auto"                           # auto | http | https
 ALLOW_STALE=0                             # не отбрасывать старые зеркала
 DRY_RUN=0
+ROLLBACK=0                                # --rollback: восстановить последний бэкап
 FORCE=0                                   # пропустить проверку, что мы на ALT
 VERBOSE=0
 NO_UPDATE=0
@@ -98,6 +109,7 @@ $SCRIPT_NAME v$VERSION — выбор самых быстрых и свежих 
       --arch A           архитектура: x86_64, aarch64, ... (иначе определяется автоматически)
   -f, --force            не проверять, что система действительно ALT Linux
       --no-update        не запускать apt-get update после применения зеркал
+      --rollback         восстановить конфигурацию из последнего бэкапа и выйти
   -v, --verbose          подробный вывод
   -h, --help             эта справка
 
@@ -106,6 +118,7 @@ $SCRIPT_NAME v$VERSION — выбор самых быстрых и свежих 
   $SCRIPT_NAME --dry-run --branch p11       # проверить зеркала p11 с любого дистра
   $SCRIPT_NAME --top 2                      # применить два лучших зеркала
   $SCRIPT_NAME --protocol https             # тестировать только HTTPS
+  $SCRIPT_NAME --rollback                   # откатить последнее применение
 
 Режим --dry-run ничего не пишет в систему, поэтому работает на любом
 дистрибутиве (Arch, Debian, Ubuntu, Fedora, ...) — это просто проверка
@@ -138,6 +151,7 @@ while [ $# -gt 0 ]; do
         --arch=*)              ALT_ARCH="${1#*=}";;
         -f|--force)            FORCE=1;;
         --no-update)           NO_UPDATE=1;;
+        --rollback)            ROLLBACK=1;;
         -v|--verbose)          VERBOSE=1;;
         -h|--help)             usage; exit 0;;
         *)
@@ -161,7 +175,6 @@ done
 # все хосты отвечают и свежи; mirror.mephi.ru работает только по http.
 DEFAULT_MIRRORS=(
     "ftp.altlinux.org|/pub/distributions/ALTLinux|Официальное зеркало ALT Linux Team (Москва)"
-    "mirror.yandex.ru|/altlinux|Яндекс"
     "mirror.datacenter.by|/pub/ALTLinux|Белтелеком (Минск, Беларусь)"
     "distrib-coffee.ipsl.jussieu.fr|/pub/linux/altlinux|IPSL (Париж, Франция)"
     "mirror.truenetwork.ru|/altlinux|TrueNetwork"
@@ -467,6 +480,8 @@ test_one_candidate() {
     for rp in "${TEST_RELPATHS[@]}"; do
         local tmpf tmpd
         tmpf=$(mktemp); tmpd=$(mktemp)
+        # На проверку секции даём не меньше 12 с (даже если MAX_TIME меньше):
+        # range-запрос лёгкий, но медленные зеркала отвечают с задержкой.
         code=$(curl -L -sS --max-time "$((MAX_TIME>12?MAX_TIME:12))" -o /dev/null -D "$tmpd" -r 0-0 -w "%{http_code}" "${base}/${rp}/base/pkglist.classic.xz" 2>/dev/null)
         # если HEAD/диапазон не поддерживаются — пробуем обычный GET заголовками
         if [ "$code" != "200" ] && [ "$code" != "206" ]; then
@@ -628,6 +643,34 @@ parse_results() {
 #   3) управляемые секции, повторённые под КАЖДОЕ из TOP_MIRRORS лучших
 #      зеркал: url подставляется в исходный шаблон строки, relpath и
 #      компоненты не меняются.
+# Оставляет в рейтинге только реально отвечающие зеркала (не больше
+# TOP_MIRRORS) — защита от «зеркало умерло после замера скорости».
+# Проверка лёгкая: range-запрос 1 байта к pkglist основной секции,
+# таймаут 10 с (это не замер скорости, ждать дольше незачем).
+filter_rank_alive() {
+    local i code kept=0 url
+    local h=() u=() s=()
+    for ((i=0; i<RANK_COUNT && kept<TOP_MIRRORS; i++)); do
+        url="${RANK_URL2[$i]}/${FIRST_RELPATH}/base/pkglist.classic.xz"
+        code=$(curl -L -sS -o /dev/null -r 0-0 -w '%{http_code}' --max-time 10 "$url" 2>/dev/null)
+        if [ "$code" = "200" ] || [ "$code" = "206" ]; then
+            h+=("${RANK_HOST2[$i]}")
+            u+=("${RANK_URL2[$i]}")
+            s+=("${RANK_SPEED2[$i]}")
+            kept=$((kept+1))
+        else
+            warn "Перед записью ${RANK_HOST2[$i]} не отвечает (HTTP $code) — пропускаю."
+        fi
+    done
+    if [ "$kept" -eq 0 ]; then
+        die "Ни одно зеркало не отвечает перед записью. Конфигурация не изменена."
+    fi
+    RANK_COUNT=$kept
+    RANK_HOST2=("${h[@]}")
+    RANK_URL2=("${u[@]}")
+    RANK_SPEED2=("${s[@]}")
+}
+
 compose_new_config() {
     # пишет новые файлы в $OUT_DIR/<базовое имя>.list
     # HEADER записывается в начало каждого изменяемого файла
@@ -716,7 +759,46 @@ apply_config() {
     return 0
 }
 
+# Ищет самый свежий бэкап конфигурации: ${SOURCES_LIST_DIR}.bak-YYYYMMDD-HHMMSS.
+# Имя содержит дату в лексикографически сортируемом виде, поэтому sort | tail.
+find_latest_backup() {
+    local d
+    d=$(ls -1d "${SOURCES_LIST_DIR}.bak-"* 2>/dev/null | sort | tail -n1)
+    [ -n "$d" ] && [ -d "$d" ] && printf '%s\n' "$d"
+}
+
+# Откат: возвращает конфигурацию из последнего бэкапа.
+# Текущий каталог НЕ удаляется — переименовывается в .broken-<дата>,
+# чтобы ничего не потерять (его можно посмотреть или вернуть вручную).
+restore_backup() {
+    local backup_dir stamp broken_dir
+    backup_dir=$(find_latest_backup)
+    if [ -z "$backup_dir" ]; then
+        err "Бэкапов ${SOURCES_LIST_DIR}.bak-* не найдено — откатывать нечего."
+        return 1
+    fi
+    stamp=$(date '+%Y%m%d-%H%M%S')
+    broken_dir="${SOURCES_LIST_DIR}.broken-$stamp"
+    info "Откат из бэкапа: $backup_dir"
+    if ! elevate "mv '${SOURCES_LIST_DIR}' '${broken_dir}' && cp -a '${backup_dir}' '${SOURCES_LIST_DIR}'"; then
+        err "Не удалось восстановить конфигурацию (нужны права root)."
+        return 1
+    fi
+    ok "Конфигурация восстановлена. Прежняя сохранена в $broken_dir"
+    return 0
+}
+
 # ----------------------------- main -----------------------------------------
+# --- откат: не требует определения системы и тестов ---
+if [ "$ROLLBACK" = "1" ]; then
+    restore_backup || die "Откат не выполнен."
+    if [ "$NO_UPDATE" != "1" ]; then
+        info "Обновляю список пакетов (apt-get update)..."
+        elevate "apt-get update" || warn "apt-get update завершился с ошибкой — проверьте зеркала вручную."
+    fi
+    exit 0
+fi
+
 detect_system
 # На не-ALT системе в режиме теста предупреждаем: ветка по умолчанию
 # sisyphus, для другой — укажите --branch.
@@ -810,6 +892,7 @@ for ((ri=0; ri<RANK_COUNT; ri++)); do
     LC_ALL=C printf '   %2d. %-10s %6.2f МБ/с  %s\n' $((ri+1)) "${RANK_HOST2[$ri]}" "${RANK_SPEED2[$ri]}" "${RANK_URL2[$ri]}"
 done
 
+filter_rank_alive
 compose_new_config
 
 if [ "$DRY_RUN" = "1" ]; then
@@ -833,7 +916,15 @@ if [ "$NO_UPDATE" != "1" ]; then
     if elevate "apt-get update"; then
         ok "apt-get update выполнен успешно."
     else
-        warn "apt-get update завершился с ошибкой — проверьте выбранные зеркала вручную."
+        # Записанное зеркало не работает — возвращаем конфигурацию, которая
+        # была до запуска, чтобы система осталась в рабочем состоянии.
+        warn "apt-get update завершился с ошибкой — возвращаю предыдущую конфигурацию."
+        if restore_backup; then
+            warn "Конфигурация откатана. Проверьте зеркала: $SCRIPT_NAME --dry-run"
+        else
+            warn "Автооткат не удался — восстановите вручную: $SCRIPT_NAME --rollback"
+        fi
+        exit 1
     fi
 fi
 

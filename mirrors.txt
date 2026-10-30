@@ -9,12 +9,16 @@
 #   * alt-mirror-switcher (shad)
 #
 # Проверка активности: bash check_mirrors.sh
-# Дата проверки: 2026-09-19. Все хосты ниже отвечают на pkglist
+# Дата проверки: 2026-10-30. Все хосты ниже отвечают на pkglist
 # (Sisyphus и/или p11) по http и https, кроме mirror.mephi.ru —
 # у него работает только http (https не отдаёт репозиторий).
 #
 # Отвергнуто при проверке 2026-09-19 (не отвечают по http/https
 # либо не содержат актуальных веток — не включать):
+#   mirror.yandex.ru          — ИСКЛЮЧЁН (2026-10-30): неконсистентные реплики,
+#                               одновременно отдаёт разные версии pkglist и
+#                               отстаёт по индексам → Hash Sum mismatch/404 в apt
+#                               (подробности в README, раздел «Исключённые зеркала»)
 #   mirror.eterfund.org       — мёртв (живой аналог: mirror.eterfund.ru)
 #   ftpmirror2.infania.net    — мёртв
 #   mirror.hoster.kz          — жива только старая раскладка p8 (x86_64/base)
@@ -27,7 +31,6 @@
 # запустите: bash check_mirrors.sh && bash alt_rate_mirrors.sh --mirrors-file mirrors.txt
 
 ftp.altlinux.org|/pub/distributions/ALTLinux|Официальное зеркало ALT Linux Team (Москва)
-mirror.yandex.ru|/altlinux|Яндекс
 mirror.datacenter.by|/pub/ALTLinux|Белтелеком (Минск, Беларусь)
 distrib-coffee.ipsl.jussieu.fr|/pub/linux/altlinux|IPSL (Париж, Франция)
 mirror.truenetwork.ru|/altlinux|TrueNetwork
